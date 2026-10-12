@@ -1,0 +1,305 @@
+{
+  "version": "0.0.1",
+  "name": "Ticketsol",
+  "instructions": [
+    {
+      "name": "new",
+      "accounts": [
+        {
+          "name": "dataAccount",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true,
+          "isOptional": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": false
+        }
+      ],
+      "args": [
+        {
+          "name": "bump",
+          "type": {
+            "array": [
+              "u8",
+              1
+            ]
+          }
+        },
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "place",
+          "type": "string"
+        },
+        {
+          "name": "starts",
+          "type": "i64"
+        },
+        {
+          "name": "supply",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "event_info",
+      "accounts": [
+        {
+          "name": "dataAccount",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": false
+        }
+      ],
+      "args": [],
+      "returns": {
+        "defined": "event_info_returns"
+      }
+    },
+    {
+      "name": "ticket_info",
+      "accounts": [
+        {
+          "name": "dataAccount",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": false
+        }
+      ],
+      "args": [
+        {
+          "name": "id",
+          "type": "u64"
+        }
+      ],
+      "returns": {
+        "defined": "ticket_info_returns"
+      }
+    },
+    {
+      "name": "buy",
+      "accounts": [
+        {
+          "name": "dataAccount",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": false
+        },
+        {
+          "name": "buyer",
+          "isMut": true,
+          "isSigner": true,
+          "isOptional": false
+        },
+        {
+          "name": "organizer",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": false
+        },
+        {
+          "name": "systemAccount",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "list",
+      "accounts": [
+        {
+          "name": "dataAccount",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": false
+        },
+        {
+          "name": "seller",
+          "isMut": false,
+          "isSigner": true,
+          "isOptional": false
+        }
+      ],
+      "args": [
+        {
+          "name": "id",
+          "type": "u64"
+        },
+        {
+          "name": "price",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "resale",
+      "accounts": [
+        {
+          "name": "dataAccount",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": false
+        },
+        {
+          "name": "buyer",
+          "isMut": true,
+          "isSigner": true,
+          "isOptional": false
+        },
+        {
+          "name": "seller",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": false
+        },
+        {
+          "name": "organizer",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": false
+        },
+        {
+          "name": "platform",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": false
+        },
+        {
+          "name": "systemAccount",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": false
+        }
+      ],
+      "args": [
+        {
+          "name": "id",
+          "type": "u64"
+        },
+        {
+          "name": "expectedPrice",
+          "type": "u64"
+        },
+        {
+          "name": "expectedGeneration",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "redeem",
+      "accounts": [
+        {
+          "name": "dataAccount",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": false
+        },
+        {
+          "name": "checker",
+          "isMut": false,
+          "isSigner": true,
+          "isOptional": false
+        }
+      ],
+      "args": [
+        {
+          "name": "id",
+          "type": "u64"
+        },
+        {
+          "name": "expectedGeneration",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "types": [
+    {
+      "name": "event_info_returns",
+      "docs": [
+        "Data structure to hold the multiple returns of function event_info"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "place",
+            "type": "string"
+          },
+          {
+            "name": "starts",
+            "type": "i64"
+          },
+          {
+            "name": "supply",
+            "type": "u64"
+          },
+          {
+            "name": "count",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ticket_info_returns",
+      "docs": [
+        "Data structure to hold the multiple returns of function ticket_info"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "publicKey"
+          },
+          {
+            "name": "price",
+            "type": "u64"
+          },
+          {
+            "name": "generation",
+            "type": "u64"
+          },
+          {
+            "name": "used",
+            "type": "bool"
+          }
+        ]
+      }
+    }
+  ],
+  "metadata": {
+    "address": "F8B453fWqji2qE6MfLjsQMmmzp9PJDNmLdudrQsoXCuP"
+  }
+}

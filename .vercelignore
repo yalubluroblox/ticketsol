@@ -1,0 +1,7 @@
+.git
+docs
+program
+.local-keys
+.env*
+*.log
+*.tsbuildinfo

@@ -1,0 +1,24 @@
+{
+  "network": "local-validator",
+  "programId": "F8B453fWqji2qE6MfLjsQMmmzp9PJDNmLdudrQsoXCuP",
+  "testedAt": "2026-10-01T09:52:39.521Z",
+  "passed": [
+    "Untrusted organizer cannot create event",
+    "Trusted organizer creates event",
+    "Buyer A purchases ticket with 0.1 SOL transfer",
+    "Unauthorized listing rejected",
+    "Above-face-value listing rejected on chain",
+    "Valid listing succeeds",
+    "Wrong fee recipient rejected",
+    "Changed price rejected",
+    "Resale transfers ownership and splits exactly 93/5/2",
+    "Old owner cannot list after resale",
+    "Old QR generation rejected by program",
+    "Unauthorized checker rejected",
+    "Current QR admits once",
+    "Repeated admission rejected",
+    "Used ticket cannot be listed",
+    "Capacity enforced",
+    "QR signature cannot be forged with public owner data"
+  ]
+}

@@ -1,0 +1,41 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import anchor from '@coral-xyz/anchor';
+import {Connection,Keypair,PublicKey,SystemProgram,Transaction,sendAndConfirmTransaction} from '@solana/web3.js';
+import nacl from 'tweetnacl';
+const {Program,AnchorProvider,Wallet,BN}=anchor;
+const connection=new Connection(process.env.TEST_RPC??'http://127.0.0.1:8899','confirmed');
+if(!connection.rpcEndpoint.includes('127.0.0.1'))throw new Error('Tests must run locally');
+const idl=JSON.parse(fs.readFileSync('program/build/Ticketsol.json','utf8'));
+const organizer=Keypair.fromSecretKey(Uint8Array.from(JSON.parse(fs.readFileSync('.local-keys/organizer.json','utf8'))));
+const platform=new PublicKey('DeQkMFfTKFiHf5DE4R1XrFPWeaHSSEqfUFbq5aM3WuL');
+const programId=new PublicKey(idl.metadata.address);
+const [dataAccount,bump]=PublicKey.findProgramAddressSync([Buffer.from('ticketsol-event')],programId);
+const a=Keypair.generate(),b=Keypair.generate(),attacker=Keypair.generate();
+const client=k=>new Program(idl,programId,new AnchorProvider(connection,new Wallet(k),{commitment:'confirmed',preflightCommitment:'confirmed'}));
+const sys={systemProgram:SystemProgram.programId,systemAccount:SystemProgram.programId};
+const passed=[];
+async function check(name,fn){await fn();passed.push(name);console.log('PASS',name);}
+async function rejects(fn){await assert.rejects(fn);}
+async function fund(k){await sendAndConfirmTransaction(connection,new Transaction().add(SystemProgram.transfer({fromPubkey:organizer.publicKey,toPubkey:k.publicKey,lamports:2e9})),[organizer]);}
+await fund(a);await fund(b);await fund(attacker);
+await check('Untrusted organizer cannot create event',()=>rejects(()=>client(attacker).methods.new([bump],'Fake','Fake',new BN(1792864800),new BN(10)).accounts({dataAccount,payer:attacker.publicKey,systemProgram:SystemProgram.programId}).rpc()));
+await check('Trusted organizer creates event',async()=>{await client(organizer).methods.new([bump],'AFTER HOURS','Almaty - Demo Space',new BN(1792864800),new BN(2)).accounts({dataAccount,payer:organizer.publicKey,systemProgram:SystemProgram.programId}).rpc();});
+await check('Buyer A purchases ticket with 0.1 SOL transfer',async()=>{const before=await connection.getBalance(organizer.publicKey);await client(a).methods.buy().accounts({dataAccount,buyer:a.publicKey,organizer:organizer.publicKey,...sys}).rpc();assert.equal(await connection.getBalance(organizer.publicKey)-before,100000000);const t=await client(a).methods.ticketInfo(new BN(0)).accounts({dataAccount}).view();assert(t.owner.equals(a.publicKey));assert.equal(t.generation.toNumber(),1);});
+await check('Unauthorized listing rejected',()=>rejects(()=>client(attacker).methods.list(new BN(0),new BN(100000000)).accounts({dataAccount,seller:attacker.publicKey}).rpc()));
+await check('Above-face-value listing rejected on chain',()=>rejects(()=>client(a).methods.list(new BN(0),new BN(100000001)).accounts({dataAccount,seller:a.publicKey}).rpc()));
+await check('Valid listing succeeds',()=>client(a).methods.list(new BN(0),new BN(100000000)).accounts({dataAccount,seller:a.publicKey}).rpc());
+const resale=(who,seller=a.publicKey,org=organizer.publicKey,fee=platform,price=100000000,gen=1)=>client(who).methods.resale(new BN(0),new BN(price),new BN(gen)).accounts({dataAccount,buyer:who.publicKey,seller,organizer:org,platform:fee,...sys}).rpc();
+await check('Wrong fee recipient rejected',()=>rejects(()=>resale(b,a.publicKey,organizer.publicKey,attacker.publicKey)));
+await check('Changed price rejected',()=>rejects(()=>resale(b,a.publicKey,organizer.publicKey,platform,90000000)));
+await check('Resale transfers ownership and splits exactly 93/5/2',async()=>{const before=await Promise.all([a.publicKey,organizer.publicKey,platform].map(k=>connection.getBalance(k)));await resale(b);const after=await Promise.all([a.publicKey,organizer.publicKey,platform].map(k=>connection.getBalance(k)));assert.deepEqual(after.map((v,i)=>v-before[i]),[93000000,5000000,2000000]);const t=await client(b).methods.ticketInfo(new BN(0)).accounts({dataAccount}).view();assert(t.owner.equals(b.publicKey));assert.equal(t.generation.toNumber(),2);assert.equal(t.price.toNumber(),0);});
+await check('Old owner cannot list after resale',()=>rejects(()=>client(a).methods.list(new BN(0),new BN(100000000)).accounts({dataAccount,seller:a.publicKey}).rpc()));
+await check('Old QR generation rejected by program',()=>rejects(()=>client(organizer).methods.redeem(new BN(0),new BN(1)).accounts({dataAccount,checker:organizer.publicKey}).rpc()));
+await check('Unauthorized checker rejected',()=>rejects(()=>client(attacker).methods.redeem(new BN(0),new BN(2)).accounts({dataAccount,checker:attacker.publicKey}).rpc()));
+await check('Current QR admits once',()=>client(organizer).methods.redeem(new BN(0),new BN(2)).accounts({dataAccount,checker:organizer.publicKey}).rpc());
+await check('Repeated admission rejected',()=>rejects(()=>client(organizer).methods.redeem(new BN(0),new BN(2)).accounts({dataAccount,checker:organizer.publicKey}).rpc()));
+await check('Used ticket cannot be listed',()=>rejects(()=>client(b).methods.list(new BN(0),new BN(100000000)).accounts({dataAccount,seller:b.publicKey}).rpc()));
+await check('Capacity enforced',async()=>{await client(a).methods.buy().accounts({dataAccount,buyer:a.publicKey,organizer:organizer.publicKey,...sys}).rpc();await rejects(()=>client(b).methods.buy().accounts({dataAccount,buyer:b.publicKey,organizer:organizer.publicKey,...sys}).rpc());});
+await check('QR signature cannot be forged with public owner data',async()=>{const message=Buffer.from(`Ticketsol:admission:devnet:${programId}:${dataAccount}:0:2:${b.publicKey}`);const sig=nacl.sign.detached(message,b.secretKey);assert(nacl.sign.detached.verify(message,sig,b.publicKey.toBytes()));assert(!nacl.sign.detached.verify(message,nacl.sign.detached(message,a.secretKey),b.publicKey.toBytes()));});
+fs.writeFileSync('program/test-results.json',JSON.stringify({network:'local-validator',programId:programId.toBase58(),testedAt:new Date().toISOString(),passed},null,2));
+console.log(`${passed.length} integration checks passed.`);
